@@ -3,7 +3,7 @@ from datetime import datetime
 
 class Message():
     # Regular expression pattern to match date, time, username/number, and message text
-    pattern = r"\[(\d{2}\.\d{2}\.\d{2}), (\d{1,2}:\d{2}:\d{2} (?:AM|PM))\] (.+?): (.+)"
+    pattern = r"\[(\d{2}[./]\d{2}[./](?:\d{2}| \d{2}))[, ]? ([0-9:.\s]+(?:AM|PM|a\.m\.|p\.m\.|nachm\.|vorm\.|morgens))\] (.+?):\s*(.*(?:\n|$))"
     
     date_time = None
     user = None
@@ -14,13 +14,22 @@ class Message():
 
         if match:
             # Extracting groups from the match
-            date_str, time_str, self.user, self.message_text = match.groups()
+            date_str, time_str, user, message_text = match.groups()
+
+            # Replace non-breaking spaces with regular spaces in the user string
+            user = user.replace("\xa0", " ")
+
+            # Assigning the values
+            self.user = user
+            self.message_text = message_text.strip() if message_text else None
 
             # Parsing the combined date and time string into a datetime object
             datetime_str = date_str + ", " + time_str
-            self.date_time = datetime.strptime(datetime_str, "%d.%m.%y, %I:%M:%S %p")
+            datetime_str = datetime_str.replace(".", "")  # Remove dots before parsing
+            self.date_time = datetime.strptime(datetime_str, "%d%m%y, %I:%M:%S %p")
         else:
             print(f"ERROR in Line: {input_text}")
+
 
 class Txt_Reader():
 
