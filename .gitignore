@@ -1,6 +1,7 @@
 # for this project
 chats/*.zip
 chats/*.txt
+data/*.jsonl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
