@@ -131,17 +131,14 @@ def split_messages(messages):
             else:
                 # Combine messages
                 try:
-                    current_message.message_text += ' ' + message.message_text
+                    current_message.message_text += '. ' + message.message_text
                 except:
                     pass
                 current_message.num_tokens += message.num_tokens
+        # Append the last message
         if current_message is not None:
             combined_list.append(current_message)
         result[result.index(sublist)] = combined_list
-    
-    # Append any remaining messages
-    if current_list:
-        result.append(current_list)
     
     return result
 
@@ -171,53 +168,24 @@ def merge_jsonl_files(directory, output_file):
                 for line in infile:
                     outfile.write(line)
 
-def clean_file(file_path):
-    lines_to_remove = [
-        "Your security code with",
-        "Messages and calls are end-to-end encrypted.",
-        "created this group",
-        "changed their phone number to a new number"
-    ]
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-
-    cleaned_lines = []
-    removed = 0
-    for line in lines:
-        if not any(pattern in line for pattern in lines_to_remove):
-            cleaned_lines.append(line)
-        else:
-            removed += 1
-
-    with open(file_path, 'w') as file:
-        file.writelines(cleaned_lines)
-
-    print(f"{file_path} removed: {removed}")
-
-
-def clean_folder(folder_path):
-    for root, _, files in os.walk(folder_path):
-        for file in files:
-            if file.endswith('.txt'):
-                file_path = os.path.join(root, file)
-                clean_file(file_path)
 
 if __name__ == "__main__":
 
     import os
     import json
 
-    clean_folder("chats")
+    #clean_folder("chats")
     
-    #for file in os.listdir("chats"):
-    #    if file.endswith(".txt"):
-    #        Txt = Txt_Reader(f"chats/{file}")
-    #        sublists = split_messages(Txt.message_objs)
-    #        message_dict = transform_to_dict(sublists)
-#
-    #        save_as_jsonl(message_dict, "data/"+file[:-4]+".jsonl")
-    #        print(f"{file}: {Txt.message_objs.__len__()}")
+    for file in os.listdir("chats"):
+        if file.endswith(".txt"):
+            Txt = Txt_Reader(f"chats/{file}")
+            sublists = split_messages(Txt.message_objs)
+            message_dict = transform_to_dict(sublists)
 
-    # merge_jsonl_files("data", "traindata.sjonl")
+            save_as_jsonl(message_dict, "data/output.jsonl")
+            print(f"{file}: {Txt.message_objs.__len__()}")
+    
+    
+    #merge_jsonl_files("data", "traindata.sjonl")
     
     
