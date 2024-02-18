@@ -6,13 +6,13 @@ import glob
 class Message():
     # Regular expression pattern to match date, time, username/number, and message text
     pattern = r"\[(\d{2}[./]\d{2}[./](?:\d{2}| \d{2}))[, ]? ([0-9:.\s]+(?:AM|PM|a\.m\.|p\.m\.|nachm\.|vorm\.|morgens))\] (.+?):\s*(.*(?:\n|$))"
-    
-    date_time = None
-    user = None
-    message_text = None
-    num_tokens = None
 
     def __init__(self, input_text) -> None:
+
+        self.date_time = None
+        self.user = None
+        self.message_text = ""
+        self.num_tokens = 0
 
         self.match_string(input_text)
         self.token_lenght(self.message_text)
@@ -30,7 +30,7 @@ class Message():
 
             # Assigning the values
             self.user = user
-            self.message_text = message_text.strip() if message_text else None
+            self.message_text = message_text.strip() if message_text else ""
 
             # Parsing the combined date and time string into a datetime object
             datetime_str = date_str + ", " + time_str
@@ -50,11 +50,9 @@ class Message():
 
 class Txt_Reader():
 
-    messages = []
-    message_objs = []
-
     def __init__(self, path) -> None:
-
+        self.messages = []
+        self.message_objs = []
         self.read_file(path)
         self.convert_all()
 
@@ -95,9 +93,19 @@ class Txt_Reader():
         return Message(string)
     
     def convert_all(self):
-
+        # This also make sure that double texts get turned into one message
         for msg in self.messages:
-            self.message_objs.append(self.convert2message(msg))
+            current_message = self.convert2message(msg)
+            if len(self.message_objs) > 0:
+                # Check if the current user is not 🥀🌙
+                if current_message.user != '🥀🌙':
+                    # Check if the last user was also not 🥀🌙
+                    if self.message_objs[-1].user != '🥀🌙':
+                        # Merge messages
+                        self.message_objs[-1].message_text += ". " + current_message.message_text
+                        self.message_objs[-1].num_tokens += current_message.num_tokens
+                        continue
+            self.message_objs.append(current_message)
 
 def split_messages(messages):
     max_tokens = 4000
@@ -110,36 +118,24 @@ def split_messages(messages):
             # Ensure the last message in the current_list is from 🥀🌙
             for m in reversed(current_list):
                 if m.user == '🥀🌙':
-                    result.append(current_list)
-                    current_list = []
-                    current_tokens = 0
                     break
                 else:
                     current_list.pop()  # Remove messages until we find one from 🥀🌙
+            result.append(current_list)
+            current_list = []
+            current_tokens = 0
         current_list.append(message)
         current_tokens += message.num_tokens
     
-    # Combine consecutive messages from the same user
-    for sublist in result:
-        combined_list = []
-        current_message = None
-        for message in sublist:
-            if current_message is None or current_message.user != message.user:
-                if current_message is not None:
-                    combined_list.append(current_message)
-                current_message = message
+    # Ensure the last sublist ends with a message from 🥀🌙
+    if current_list:
+        for m in reversed(current_list):
+            if m.user == '🥀🌙':
+                result.append(current_list)
+                break
             else:
-                # Combine messages
-                try:
-                    current_message.message_text += '. ' + message.message_text
-                except:
-                    pass
-                current_message.num_tokens += message.num_tokens
-        # Append the last message
-        if current_message is not None:
-            combined_list.append(current_message)
-        result[result.index(sublist)] = combined_list
-    
+                current_list.pop()  # Remove messages until we find one from 🥀🌙
+
     return result
 
 def transform_to_dict(sublists):
@@ -156,10 +152,10 @@ def transform_to_dict(sublists):
     return transformed_dict     
 
 def save_as_jsonl(transformed_dict, filename):
-    with open(filename, 'w', encoding='utf-8') as file:
+    with open(filename, 'a', encoding='utf-8') as json_file:
         for _, value in transformed_dict.items():
-            json.dump(value, file, ensure_ascii=False)
-            file.write('\n')
+            json.dump(value, json_file, ensure_ascii=False)
+            json_file.write('\n')
 
 def merge_jsonl_files(directory, output_file):
     with open(output_file, 'w', encoding='utf-8') as outfile:
@@ -176,14 +172,15 @@ if __name__ == "__main__":
 
     #clean_folder("chats")
     
-    for file in os.listdir("chats"):
-        if file.endswith(".txt"):
-            Txt = Txt_Reader(f"chats/{file}")
+    for text_file in os.listdir("chats"):
+        if text_file.endswith(".txt"):
+            Txt = Txt_Reader(f"chats/{text_file}")
             sublists = split_messages(Txt.message_objs)
             message_dict = transform_to_dict(sublists)
 
             save_as_jsonl(message_dict, "data/output.jsonl")
-            print(f"{file}: {Txt.message_objs.__len__()}")
+            print(f"{text_file}: {len(Txt.message_objs)}")
+            Txt, sublists, message_dict = None, None, None
     
     
     #merge_jsonl_files("data", "traindata.sjonl")
